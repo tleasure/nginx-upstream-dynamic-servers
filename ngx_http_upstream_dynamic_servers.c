@@ -133,7 +133,11 @@ ngx_http_upstream_dynamic_server_directive(ngx_conf_t *cf, ngx_command_t *cmd, v
     time_t                       fail_timeout;
     ngx_str_t                   *value, s;
     ngx_url_t                    u;
+#if nginx_version >= 1011005
+    ngx_int_t                    weight, max_conns, max_fails;
+#else
     ngx_int_t                    weight, max_fails;
+#endif
     ngx_uint_t                   i;
     ngx_http_upstream_server_t  *us;
 
@@ -147,6 +151,9 @@ ngx_http_upstream_dynamic_server_directive(ngx_conf_t *cf, ngx_command_t *cmd, v
     value = cf->args->elts;
 
     weight = 1;
+#if nginx_version >= 1011005
+    max_conns = 0;
+#endif
     max_fails = 1;
     fail_timeout = 10;
 
@@ -166,6 +173,23 @@ ngx_http_upstream_dynamic_server_directive(ngx_conf_t *cf, ngx_command_t *cmd, v
 
             continue;
         }
+
+#if nginx_version >= 1011005
+        if (ngx_strncmp(value[i].data, "max_conns=", 10) == 0) {
+
+            if (!(uscf->flags & NGX_HTTP_UPSTREAM_MAX_CONNS)) {
+                goto not_supported;
+            }
+
+            max_conns = ngx_atoi(&value[i].data[10], value[i].len - 10);
+
+            if (max_conns == NGX_ERROR) {
+                goto invalid;
+            }
+
+            continue;
+        }
+#endif
 
         if (ngx_strncmp(value[i].data, "max_fails=", 10) == 0) {
 
